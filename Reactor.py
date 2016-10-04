@@ -1,10 +1,13 @@
 import random
+import time
+from Queue import Empty
 class Reactor:
-    def __init__(self, child_pipe):
+    def __init__(self, queues, reciever):
         self.counter = 0
         self.rateOfReaction = 0
         self.controlRodDropped = False
-        self.pipe = child_pipe
+        self.queues = queues
+        self.receiver = reciever
         random.seed(10)
 
     def getCentralTemp(self):
@@ -20,17 +23,28 @@ class Reactor:
         self.controlRodDropped = True
 
     def raiseControlRods(self):
-        self.controlRodDropped = True
+        self.controlRodDropped = False
 
     def runNuclearReactor(self):
+        timestamp = 0
         while True:
-            order = self.pipe.recv()
-            if order == "Raise":
-                self.raiseControlRods()
-            else:
-                self.dropControlRods()
-
+            time.sleep(0.01)
             temp = self.getCentralTemp()
             safety = self.getSafetyValveStats()
-            self.pipe.send([temp, safety])
+            for q in self.queues:
+                #print [temp, safety, timestamp]
+                q.put([temp, safety, timestamp])
+            timestamp += 1
+            try:
+                order = self.receiver.get_nowait()
+                print order
+                if order[2] == "Raise":
+                    self.raiseControlRods()
+                else:
+                    self.dropControlRods()
+
+
+            except Empty:
+                pass
+
 

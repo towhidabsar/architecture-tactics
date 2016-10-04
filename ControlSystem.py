@@ -1,44 +1,46 @@
 import Reactor
 import multiprocessing
+import sys
+from Queue import Empty
 import random
 import os
+import time
 class ControlSystem:
-    def __init__(self):
-        self.reactor = Reactor.Reactor()
+    def __init__(self, reactor, receiver):
+        self.reactor = reactor
+        self.receiver = receiver
 
-    def runNuclearReactor(self, queue):
+    def runNuclearReactor(self):
+        time.sleep(0.01)
         kill_process = 0
+        instruction = "Drop"
+        timestamp = 0
         count = 1
         while True:
-            #Checking core Temperature of the reactor\n
-            temp = self.reactor.getCentralTemp()
-            if temp > 9:
-                #ALERT: Temperature too high, please drop control rods!
-                self.reactor.dropControlRods()
-            else:
-                #Temperature under control, raise control rods!
-                self.reactor.raiseControlRods()
-
-            #"Checking Safety Valve status\n"
-            safety = self.reactor.getSafetyValveStats()
-            if safety < 2:
-                #"ALERT: Safety valve malfunction, please drop control rods!"
-                self.reactor.dropControlRods()
-            else:
-                #"Safety valve functioning!"
-                self.reactor.raiseControlRods()
-            self.sendHeartbeat(queue)
+            try:
+                time.sleep(0.01)
+                info = self.reactor.get_nowait()
+                temp = info[0]
+                safety = info[1]
+                timestamp = info[2]
+                if temp > 9 or safety < 2:
+                    instruction = "Drop"
+                else:
+                    instruction = "Raise"
+            except Empty:
+                pass
+            finally:
+                self.sendHeartbeat(instruction, timestamp)
             kill_process = random.randint(1,100)
-            if kill_process == 99:
-                queue.send([os.getpid(), count])
+            if kill_process > 90:
                 print "Process dead", os.getpid()
                 break
             else:
                 count +=1
 
-    def sendHeartbeat(self, queue):
-        #print os.getpid(), "Alive"
-        queue.send([os.getpid(), "Alive"])
+    def sendHeartbeat(self, instruction,timestamp):
+        #os.getpid(), "Alive", instruction
+        self.receiver.put([os.getpid(), "Alive", instruction, timestamp])
 
 
 
