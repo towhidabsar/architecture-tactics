@@ -5,6 +5,10 @@ from Queue import Empty
 import random
 import os
 import time
+
+'''
+Class representing the control system for the nuclear reactor.
+'''
 class ControlSystem:
     def __init__(self, reactor, receiver):
         self.reactor = reactor
